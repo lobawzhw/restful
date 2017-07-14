@@ -1,0 +1,21 @@
+<?php
+
+/**
+* 错误码配置类
+*/
+class ErrorCode
+{
+	const USERNAME_CANNOT_EMPTY = 1;
+	const PASSWORD_CANNOT_EMPTY = 2;
+	const USERNAME_IS_EXIST = 3;
+	const REGISTER_FAILED = 4;
+	const USER_NOT_EXIST = 5;
+
+	const TITLE_CANNOT_EMPTY = 10;
+	const CONTENT_CANNOT_EMPTY = 11;
+	const ARTICLE_CREATE_FAILED = 12;
+	const ARTICLE_NOT_FOUND = 13;
+	const AUTH_DENIED = 14;
+	const ARTICLE_DELETE_FAILED = 15;
+	const ARTICLE_EDIT_FAILED = 16;
+}
