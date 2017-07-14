@@ -18,4 +18,7 @@ class ErrorCode
 	const AUTH_DENIED = 14;
 	const ARTICLE_DELETE_FAILED = 15;
 	const ARTICLE_EDIT_FAILED = 16;
+	const REQUEST_TOO_MUCH = 17;
+	const USERID_CANNOT_EMPTY = 18;
+	const ARTICLE_ID_CANNOT_EMPTY = 19;
 }
