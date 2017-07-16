@@ -16,4 +16,18 @@ $articles = new Articles($pdo);
 // $result = $articles->getOneArticle(3);
 // $result = $articles->getArticleList(2,3);
 
+
+// eturn 333{}
+function test() {
+	try {
+		return 222;
+	} catch (Exception $e) {
+		return 111;
+	}
+}
+
+echo test();
+exit;
+
+		
 var_dump($result);

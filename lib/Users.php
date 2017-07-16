@@ -30,10 +30,12 @@ class Users
 		$password = $this->_md5($password);
 		$stmt->bindParam(':username', $username);
 		$stmt->bindParam(':password', $password);
-		$stmt->execute();
+		if ($stmt->execute()) {
+			throw new Exception("服务器内部错误", ErrorCode::SERVER_INTERNAL_ERROR);
+		}
 		$user = $stmt->fetch(PDO::FETCH_ASSOC);
 		if (!$user) {
-			throw new Exception("账号不存在", ErrorCode::USER_NOT_EXIST);
+			throw new Exception("用户名或密码错误", ErrorCode::USER_OR_PASSWORD_INVALID);
 		}
 		return [
 			'id' => $user['id'],
@@ -49,7 +51,8 @@ class Users
 	 * @return array
 	 */
 	public function register($username, $password) {
-		if ($this->_checkUsernameExist($username, $password)) {
+		$this->_checkUsernameAndPasswordIsEmpty($username, $password);
+		if ($this->_checkUsernameExist($username)) {
 			throw new Exception("用户名已存在", ErrorCode::USERNAME_IS_EXIST);			
 		}
 		$sql = 'INSERT INTO `user`(username, password, createdAt) VALUES(:username, :password, :createdAt)';
@@ -72,11 +75,9 @@ class Users
 	/**
 	 * 检查用户名是否存在
 	 * @param  string $username 用户名
-	 * @param  string $password 密码
 	 * @return boolean
 	 */
-	private function _checkUsernameExist($username, $password) {
-		$this->_checkUsernameAndPasswordIsEmpty($username, $password);
+	private function _checkUsernameExist($username) {
 		$sql = 'SELECT * FROM `user` WHERE `username`=:username';
 		$stmt = $this->_db->prepare($sql);
 		$stmt->bindParam(':username', $username);
