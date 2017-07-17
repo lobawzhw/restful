@@ -64,7 +64,7 @@ class Restful
 	private $_status_codes = [
 		200 => 'Ok',
 		204 => 'On Content',
-		400 => 'Bad Request111',
+		400 => 'Bad Request',
 		401 => 'Unauthorized',
 		403 => 'Forbidden',
 		404 => 'Not Found',
@@ -182,7 +182,7 @@ class Restful
 		}	
 
 		try {
-			return $this->_user->register($body['username'], $body['password']);	
+			return $this->_users->register($body['username'], $body['password']);	
 		} catch (Exception $e) {
 			if (in_array($e->getCode(), [
 					ErrorCode::USERNAME_CANNOT_EMPTY, 
@@ -204,7 +204,7 @@ class Restful
 	 */
 	private function _userLogin($username, $password) {
 		try {
-			return $this->_user->login($username, $password);
+			return $this->_users->login($username, $password);
 		} catch (Exception $e) {
 			if (in_array($e->getCode(), [
 					ErrorCode::USERNAME_CANNOT_EMPTY, 
