@@ -1,6 +1,7 @@
 <?php
+
 header('content-type:text/html;charset=utf8');
-// print_r($_SERVER);exit;
+
 
 $pdo = require __DIR__.'/../lib/db.php';
 require __DIR__.'/../lib/Users.php';
@@ -8,7 +9,7 @@ require __DIR__.'/../lib/Articles.php';
 require __DIR__.'/../lib/ErrorCode.php';
 // echo $_SERVER['PATH_INFO'];
 // echo $_SERVER['REQUEST_METHOD'];
-
+// echo 111111;exit;
 /**
 * restful入口处理类
 */
@@ -116,21 +117,21 @@ class Restful
 	 * @return  void
 	 */
 	private function _setupRequestResource() {
-		if (!$_SERVER['PATH_INFO']) {
+		if (!isset($_SERVER['PATH_INFO'])) {
 			throw new Exception("资源不存在", 404);			
 		}
 		$path_info = explode('/', $_SERVER['PATH_INFO']); 
 		$_request_resource = $path_info[1];
-		if ($path_info[2]) {
-			$_request_id = $path_info[2];	
-		}
 		
 		if (!in_array($_request_resource, $this->_allowed_resources)) {
 			throw new Exception("资源不存在2", 404);			
 		}
-
 		$this->_request_resource = $_request_resource;
-		$this->_request_id = $_request_id;
+
+		if (isset($path_info[2])) {
+			$_request_id = $path_info[2];	
+			$this->_request_id = $_request_id;
+		}
 	}
 
 	/**
