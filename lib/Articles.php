@@ -65,17 +65,16 @@ class Articles
 
 	/**
 	 * 删除文章
-	 * @param  int $artical_id 文章ID
+	 * @param  int $article_id 文章ID
 	 * @param  int $user_id    作者ID
 	 * @return bool             
 	 */
-	public function deleteArticle($artical_id, $user_id) {
-		$this->_checkArticleExist($artical_id);
-		$this->_checkArticleAuth($artical_id, $user_id);
+	public function deleteArticle($article_id, $user_id) {
+		$this->_checkArticleAuth($article_id, $user_id);
 
-		$sql = 'DELETE FROM `article` WHERE `id`=:artical_id AND `userId`=:user_id';
+		$sql = 'DELETE FROM `article` WHERE `id`=:article_id AND `userId`=:user_id';
 		$stmt = $this->_db->prepare($sql);
-		$stmt->bindParam(':artical_id', $artical_id);
+		$stmt->bindParam(':article_id', $article_id);
 		$stmt->bindParam(':user_id', $user_id);
 		if (!$stmt->execute()) {
 			throw new Exception("文章刪除失败", ErrorCode::ARTICLE_DELETE_FAILED);
@@ -85,37 +84,42 @@ class Articles
 
 	/**
 	 * 编辑文章
-	 * @param  int $artical_id 文章ID
+	 * @param  int $article_id 文章ID
 	 * @param  string $title   标题
 	 * @param  string $content 内容
 	 * @param  int $user_id    作者ID
 	 * @return bool       
 	 */
-	public function editArticle($artical_id, $title, $content, $user_id) {
-		$article = $this->_checkArticleExist($artical_id);
-		$this->_checkArticleAuth($artical_id, $user_id);
+	public function editArticle($article_id, $title, $content, $user_id) {
+		$article = $this->_checkArticleAuth($article_id, $user_id);
 
-		$sql = 'UPDATE `article` SET `title`=:title, `content`=:content WHERE `id`=:artical_id';
+		$sql = 'UPDATE `article` SET `title`=:title, `content`=:content WHERE `id`=:article_id';
 		$stmt = $this->_db->prepare($sql);
 		$title = empty($title) ? $article['title'] : $title;
 		$content = empty($content) ? $article['content'] : $content;
-		// var_dump([$artical_id, $title, $content, $sql]);exit;
+		// var_dump([$article_id, $title, $content, $sql]);exit;
 		$stmt->bindParam(':title', $title);
 		$stmt->bindParam(':content', $content);
-		$stmt->bindParam(':artical_id', $artical_id);
+		$stmt->bindParam(':article_id', $article_id);
 		if (!$stmt->execute()) {
 			throw new Exception("文章更新失败", ErrorCode::ARTICLE_EDIT_FAILED);
 		}
-		return true;
+		return [
+			'id' => $article_id,
+			'title' => $title,
+			'content' => $content,
+			'createdAt' => $article['createdAt'],
+			'userId' => $article['userId'],
+		];
 	}
 
 	/**
 	 * 获取一篇文章详情
-	 * @param  int $artical_id 文章ID
+	 * @param  int $article_id 文章ID
 	 * @return array             
 	 */
-	public function getOneArticle($artical_id) {
-		$article = $this->_checkArticleExist($artical_id);
+	public function getOneArticle($article_id) {
+		$article = $this->_getOneArticle($article_id);
 		return $article;
 	}
 
@@ -130,13 +134,15 @@ class Articles
 		if ($pagesize > $this->_limit_count) {
 			throw new Exception("获取文章数量超出上限{$this->_limit_count}", ErrorCode::REQUEST_TOO_MUCH);	
 		}
-		$sql = 'select * from `article` limit :limit, :pagesize';
+		$sql = 'SELECT * FROM `article` LIMIT :limit, :pagesize';
 		$stmt = $this->_db->prepare($sql);
 		$limit = ($page - 1) * $pagesize;
 		$limit = $limit < 0 ? 0 : $limit;
 		$stmt->bindParam(':limit', $limit);
 		$stmt->bindParam(':pagesize', $pagesize);
-		$stmt->execute();
+		if (!$stmt->execute()) {
+			throw new Exception("获取文章列表失败", ErrorCode::GET_ARTICLE_LIST_FAILED);			
+		}
 		$result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 		return $result;
 	}
@@ -144,17 +150,19 @@ class Articles
 	/**
 	 * 检查文章是否存在
 	 * 若存在则返回文章详情
-	 * @param  int $artical_id 文章ID
+	 * @param  int $article_id 文章ID
 	 * @return array             
 	 */
-	private function _checkArticleExist($artical_id) {
-		if (empty($artical_id)) {
+	private function _getOneArticle($article_id) {
+		if (empty($article_id)) {
 			throw new Exception("文章ID不能为空", ErrorCode::ARTICLE_ID_CANNOT_EMPTY);			
 		}
-		$sql = 'SELECT * FROM `article` WHERE `id`=:artical_id';
+		$sql = 'SELECT * FROM `article` WHERE `id`=:article_id';
 		$stmt = $this->_db->prepare($sql);
-		$stmt->bindParam(':artical_id', $artical_id);
-		$stmt->execute();
+		$stmt->bindParam(':article_id', $article_id);
+		if (!$stmt->execute()) {
+			throw new Exception("获取文章失败", ErrorCode::GET_ARTICLE_FAILED);			
+		}
 		$article = $stmt->fetch(PDO::FETCH_ASSOC);
 		if (empty($article)) {
 			throw new Exception("文章不存在", ErrorCode::ARTICLE_NOT_FOUND);
@@ -164,22 +172,28 @@ class Articles
 
 	/**
 	 * 检查文章与作者是否对应
-	 * @param  int $artical_id 文章ID
+	 * @param  int $article_id 文章ID
 	 * @param  int $user_id    作者ID
-	 * @return void             
+	 * @return array             
 	 */
-	private function _checkArticleAuth($artical_id, $user_id) {
+	private function _checkArticleAuth($article_id, $user_id) {
+		if (empty($article_id)) {
+			throw new Exception("文章ID不能为空", ErrorCode::ARTICLE_ID_CANNOT_EMPTY);			
+		}
 		if (empty($user_id)) {
 			throw new Exception("作者ID不能空", ErrorCode::USERID_CANNOT_EMPTY);			
 		}
-		$sql = 'SELECT * FROM `article` WHERE `id`=:artical_id AND `userId`=:user_id';
+		$sql = 'SELECT * FROM `article` WHERE `id`=:article_id AND `userId`=:user_id';
 		$stmt = $this->_db->prepare($sql);
-		$stmt->bindParam(':artical_id', $artical_id);
+		$stmt->bindParam(':article_id', $article_id);
 		$stmt->bindParam(':user_id', $user_id);
-		$stmt->execute();
+		if (!$stmt->execute()) {
+			throw new Exception("检查文章归属失败", ErrorCode::CHECK_AUTH_FAILED);			
+		}
 		$article = $stmt->fetch(PDO::FETCH_ASSOC);
 		if (empty($article)) {
 			throw new Exception("您无权操作该文章", ErrorCode::AUTH_DENIED);
 		}
+		return $article;
 	}
 }

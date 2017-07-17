@@ -94,6 +94,7 @@ class Restful
 			if ($this->_request_resource=='users') {
 				$this->_json($this->_handleUser());
 			} elseif ($this->_request_resource=='articles') {
+				//删除文章成功后会返回true; 待解析TODO
 				$this->_json($this->_handleArticle());
 			}
 		} catch (Exception $e) {
@@ -272,20 +273,93 @@ class Restful
 		
 	}
 
+	/**
+	 * 删除文章
+	 * @return  
+	 */
 	private function _handleArticleDelete() {
-		
+		$body = $this->_getBodyParam();
+		if (empty($body['article_id'])) {
+			throw new Exception("文章ID不能为空", 400);	
+		}
+
+		$user = $this->_userLogin($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW']);
+		try {
+			return $this->_articles->deleteArticle($body['article_id'], $user['id']);
+		} catch (Exception $e) {
+			if (in_array($e->getCode(), [ErrorCode::ARTICLE_ID_CANNOT_EMPTY, ErrorCode::USERID_CANNOT_EMPTY])) {
+				throw new Exception($e->getMessage(), 400);				
+			}
+			throw new Exception($e->getMessage(), 500);
+		}
 	}
 
+	/**
+	 * 文章编辑
+	 * @return 
+	 */
 	private function _handleArticleEdit() {
-		
+		$body = $this->_getBodyParam();
+		if (empty($body['article_id'])) {
+			throw new Exception("文章ID不能为空", 400);	
+		}
+
+		$old_article = $this->_articles->getOneArticle($body['article_id']);
+		if (empty($body['title']) && empty($body['content'])) {
+			return $old_article;
+		}
+
+		$title = empty($body['title']) ? $old_article['title'] : $body['title'];
+		$content = empty($body['content']) ? $old_article['content'] : $body['content'];
+		$user = $this->_userLogin($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW']);
+
+		try {
+			return $this->_articles->editArticle($body['article_id'], $title, $content, $user['id']);
+		} catch (Exception $e) {
+			if (in_array($e->getCode(), [ErrorCode::ARTICLE_ID_CANNOT_EMPTY, ErrorCode::USERID_CANNOT_EMPTY])) {
+				throw new Exception($e->getMessage(), 400);				
+			}
+			throw new Exception($e->getMessage(), 500);
+		}		
 	}
 
+	/**
+	 * 获取文章列表
+	 * @return 
+	 */
 	private function _handleArticleList() {
-		
+		$body = $this->_getBodyParam();
+		if (empty($body['page'])) {
+			throw new Exception("页码不能为空", 400);	
+		}
+		$pagesize = empty($body['pagesize']) ? 0 : $body['pagesize'];
+		try {
+			return $this->_articles->getArticleList($body['page'], $pagesize);
+		} catch (Exception $e) {
+			if ($e->getCode()==ErrorCode::REQUEST_TOO_MUCH) {
+				throw new Exception($e->getMessage(), 400);				
+			}
+			throw new Exception($e->getMessage(), 500);		
+		}		
 	}
 
+	/**
+	 * 获取指定文章信息
+	 * @return 
+	 */
 	private function _handleArticleView() {
-		
+		$body = $this->_getBodyParam();
+		if (empty($body['article_id'])) {
+			throw new Exception("文章ID不能为空", 400);	
+		}
+		try {
+			return $this->_articles->getOneArticle($body['article_id']);
+		} catch (Exception $e) {
+			if ($e->getCode()==ErrorCode::ARTICLE_ID_CANNOT_EMPTY) {
+				throw new Exception($e->getMessage(), 400);				
+			}
+			throw new Exception($e->getMessage(), 500);		
+		}	
 	}
 }
 
