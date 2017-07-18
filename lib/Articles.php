@@ -154,7 +154,7 @@ class Articles
 	 * @return array             
 	 */
 	private function _getOneArticle($article_id) {
-		if (empty($article_id)) {
+		if (!isset($article_id)) {
 			throw new Exception("文章ID不能为空", ErrorCode::ARTICLE_ID_CANNOT_EMPTY);			
 		}
 		$sql = 'SELECT * FROM `article` WHERE `id`=:article_id';

@@ -30,7 +30,7 @@ class Users
 		$password = $this->_md5($password);
 		$stmt->bindParam(':username', $username);
 		$stmt->bindParam(':password', $password);
-		if ($stmt->execute()) {
+		if (!$stmt->execute()) {
 			throw new Exception("服务器内部错误", ErrorCode::SERVER_INTERNAL_ERROR);
 		}
 		$user = $stmt->fetch(PDO::FETCH_ASSOC);

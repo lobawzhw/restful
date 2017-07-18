@@ -1,8 +1,32 @@
 # restful
 test api
 
-# Mysql 
 
+# restful api设计六要素
+
+## 资源路径 (URI)
+### users
+### articles
+
+## HTTP动词
+### GET
+### POST
+### DELETE
+### PUT
+### OPTIONS
+
+## 过滤信息
+### 分页
+
+## 状态码
+
+## 错误处理
+### 与状态码配合使用，返回给客户端一个语义化的错误信息
+
+## 返回结果
+### 不要把密码返回给客户端
+
+# Mysql 
 CREATE TABLE `user` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `username` varchar(30) DEFAULT NULL,

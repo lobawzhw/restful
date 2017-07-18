@@ -63,7 +63,7 @@ class Restful
 	 */
 	private $_status_codes = [
 		200 => 'Ok',
-		204 => 'On Content',
+		204 => 'No Content',
 		400 => 'Bad Request',
 		401 => 'Unauthorized',
 		403 => 'Forbidden',
@@ -130,8 +130,7 @@ class Restful
 		$this->_request_resource = $_request_resource;
 
 		if (isset($path_info[2])) {
-			$_request_id = $path_info[2];	
-			$this->_request_id = $_request_id;
+			$this->_request_id = $path_info[2];
 		}
 	}
 
@@ -142,14 +141,19 @@ class Restful
 	 * @return mix           
 	 */
 	private function _json($message, $code=0) {
-		header('content-type:application/json;charset=utf8');
-		$code = $code<=204 ? 200 : $code;
-		$code = $code==ErrorCode::USERNAME_IS_EXIST ? 400 : $code;
-		if ($code>200) {
-			header("HTTP/1.1 {$code} ".$this->_status_codes[$code]);
+
+		if ($message===null && $code===0) {
+			$code = 204;
+		} elseif ($message!==null && $code===0) {
+			$code = 200;
 		}
 
-		echo json_encode($message, JSON_UNESCAPED_UNICODE);
+		header('content-type:application/json;charset=utf8');
+		header("HTTP/1.1 {$code} ".$this->_status_codes[$code]);
+
+		if ($message!==null) {
+			echo json_encode($message, JSON_UNESCAPED_UNICODE);
+		}		
 		exit;
 	}
 
@@ -158,11 +162,17 @@ class Restful
 	 * @return array 
 	 */
 	private function _getBodyParam() {
-		$raw = file_get_contents('php://input');
-		if (empty($raw)) {
-			throw new Exception('请求参数错误', 400);
+		if ($this->_request_method=='GET') {
+			return $_GET;
+		} else {
+			$raw = file_get_contents('php://input');
+			if (empty($raw)) {
+				throw new Exception('请求参数错误', 400);
+			}
+			return json_decode($raw, true);
 		}
-		return json_decode($raw, true);
+		
+		
 	}
 
 	/**
@@ -213,7 +223,7 @@ class Restful
 					ErrorCode::USER_OR_PASSWORD_INVALID
 				]	
 			)) {
-				throw new Exception($e->getMessage(), 400);	
+				throw new Exception($e->getMessage(), 401);	
 			} 
 			throw new Exception($e->getMessage(), 500);			
 		}		
@@ -232,7 +242,7 @@ class Restful
 			case 'PUT':
 				return $this->_handleArticleEdit();
 			case 'GET':
-				if (empty($this->_request_id)) {
+				if (!isset($this->_request_id)) {
 					return $this->_handleArticleList();
 				} else {
 					return $this->_handleArticleView();
@@ -254,9 +264,11 @@ class Restful
 		if (empty($body['content'])) {
 			throw new Exception("内容不能为空", 400);	
 		}
+		if (empty($_SERVER['PHP_AUTH_USER']) || empty($_SERVER['PHP_AUTH_PW'])) {
+			throw new Exception("用户名或密码不能为空", 400);	
+		}
 
 		$user = $this->_userLogin($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW']);
-
 		try {
 			return $this->_articles->createArticle($body['title'], $body['content'], $user['id']);
 		} catch (Exception $e) {
@@ -269,8 +281,7 @@ class Restful
 				throw new Exception($e->getMessage(), 400);	
 			} 
 			throw new Exception($e->getMessage(), 500);		
-		}
-		
+		}		
 	}
 
 	/**
@@ -278,14 +289,17 @@ class Restful
 	 * @return  
 	 */
 	private function _handleArticleDelete() {
-		$body = $this->_getBodyParam();
-		if (empty($body['article_id'])) {
+		if (!isset($this->_request_id)) {
 			throw new Exception("文章ID不能为空", 400);	
+		}
+		if (empty($_SERVER['PHP_AUTH_USER']) || empty($_SERVER['PHP_AUTH_PW'])) {
+			throw new Exception("用户名或密码不能为空", 400);	
 		}
 
 		$user = $this->_userLogin($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW']);
 		try {
-			return $this->_articles->deleteArticle($body['article_id'], $user['id']);
+			$this->_articles->deleteArticle($this->_request_id, $user['id']);
+			return null;
 		} catch (Exception $e) {
 			if (in_array($e->getCode(), [ErrorCode::ARTICLE_ID_CANNOT_EMPTY, ErrorCode::USERID_CANNOT_EMPTY])) {
 				throw new Exception($e->getMessage(), 400);				
@@ -300,21 +314,26 @@ class Restful
 	 */
 	private function _handleArticleEdit() {
 		$body = $this->_getBodyParam();
-		if (empty($body['article_id'])) {
+		if (empty($this->_request_id)) {
 			throw new Exception("文章ID不能为空", 400);	
 		}
-
-		$old_article = $this->_articles->getOneArticle($body['article_id']);
+		if (empty($_SERVER['PHP_AUTH_USER']) || empty($_SERVER['PHP_AUTH_PW'])) {
+			throw new Exception("用户名或密码不能为空", 400);	
+		}
+		$user = $this->_userLogin($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW']);
+		$old_article = $this->_articles->getOneArticle($this->_request_id);
+		if ($user['id']!=$old_article['userId']) {
+			throw new Exception("无权修改该文章", 403);	
+		}		
 		if (empty($body['title']) && empty($body['content'])) {
 			return $old_article;
 		}
 
 		$title = empty($body['title']) ? $old_article['title'] : $body['title'];
-		$content = empty($body['content']) ? $old_article['content'] : $body['content'];
-		$user = $this->_userLogin($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW']);
+		$content = empty($body['content']) ? $old_article['content'] : $body['content'];		
 
 		try {
-			return $this->_articles->editArticle($body['article_id'], $title, $content, $user['id']);
+			return $this->_articles->editArticle($this->_request_id, $title, $content, $user['id']);
 		} catch (Exception $e) {
 			if (in_array($e->getCode(), [ErrorCode::ARTICLE_ID_CANNOT_EMPTY, ErrorCode::USERID_CANNOT_EMPTY])) {
 				throw new Exception($e->getMessage(), 400);				
@@ -348,12 +367,11 @@ class Restful
 	 * @return 
 	 */
 	private function _handleArticleView() {
-		$body = $this->_getBodyParam();
-		if (empty($body['article_id'])) {
+		if (!isset($this->_request_id)) {
 			throw new Exception("文章ID不能为空", 400);	
 		}
 		try {
-			return $this->_articles->getOneArticle($body['article_id']);
+			return $this->_articles->getOneArticle($this->_request_id);
 		} catch (Exception $e) {
 			if ($e->getCode()==ErrorCode::ARTICLE_ID_CANNOT_EMPTY) {
 				throw new Exception($e->getMessage(), 400);				
