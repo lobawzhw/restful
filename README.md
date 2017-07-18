@@ -4,27 +4,27 @@ test api
 
 # restful api设计六要素
 
-## 资源路径 (URI)
-### users
-### articles
+### 资源路径 (URI)
+users
+articles
 
-## HTTP动词
-### GET
-### POST
-### DELETE
-### PUT
-### OPTIONS
+### HTTP动词
+GET
+POST
+DELETE
+PUT
+OPTIONS
 
-## 过滤信息
-### 分页
+### 过滤信息
+分页
 
-## 状态码
+### 状态码
 
-## 错误处理
-### 与状态码配合使用，返回给客户端一个语义化的错误信息
+### 错误处理
+与状态码配合使用，返回给客户端一个语义化的错误信息
 
-## 返回结果
-### 不要把密码返回给客户端
+### 返回结果
+不要把密码返回给客户端
 
 # Mysql 
 CREATE TABLE `user` (
